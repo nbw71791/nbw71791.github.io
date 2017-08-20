@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+   <head>
+      <meta charset="utf-8">
+      <title>Lab 09 Template</title>
+      <meta content='initial-scale=1,maximum-scale=1,user-scalable=no' name='viewport'>
+      <script src="http://cdn.leafletjs.com/leaflet/v0.7.7/leaflet.js"></script>
+      <link href="http://cdn.leafletjs.com/leaflet/v0.7.7/leaflet.css" rel="stylesheet">
+      <link href='http://fonts.googleapis.com/css?family=Lato' rel='stylesheet' type='text/css'>
+      <style>
+         body {
+         margin: 0;
+         padding: 0;
+         background: whitesmoke;
+         font-family: Lato, sans-serif;
+         color: #0D0000;
+         }
+         header {
+         padding: 6px 10%;
+         }
+         h1 {
+         display: inline-block;
+         margin-right: 20px;
+         color: #001323;
+         }
+         h2 {
+         display: inline-block;
+         color: #001323;
+         }
+         #map {
+         width: 80%;
+         height: 540px;
+         margin: 10px auto;
+         }
+         footer {
+         padding: 6px 10%;
+         width: 80%;
+         }
+         p {
+         font-size: 1em;
+         color: #001323;
+         }        
+      </style>
+   </head>
+   <body>
+      <header>
+         <h1>Department of Energy</h1>
+         <h2>Three Key US Power Sources, Mapped</h2>
+      </header>
+      <div id='map'></div>
+      <footer>
+         <p>Map authored by Nick Wade</p>
+         <p>A map displaying the differences in output between geothermal, solar, and biomass generated energy. Use the controls on the upper right hand corner of the map to toggle on/off layers.</p>
+      </footer>
+      <script src="gis_data/power-plants.js"></script>
+      <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.0/jquery.min.js"></script>
+      <script>
+         function getRadius(area) {
+             var radius = Math.sqrt(area / Math.PI);
+             return radius * 2;
+         };
+         
+         function getLayers(plants){
+             var biomassLayer = L.layerGroup(),
+                 geothermalLayer = L.layerGroup(),
+                 solarLayer = L.layerGroup();
+                 var properties = {};
+         
+             L.geoJson(plants, {
+                 pointToLayer: function(feature, latlng) {
+                     commonProperties.radius = getRadius(feature.properties.capacity_mw);
+                     if(feature.properties.fuel_source["Biomass"]){
+                         properties = $.extend(biomassProperties, commonProperties);
+                         }
+                     else if(feature.properties.fuel_source["Geothermal"]){
+                         properties = $.extend(geothermalProperties, commonProperties);
+                         }
+                     else if(feature.properties.fuel_source["Solar"]){
+                         properties = $.extend(solarProperties, commonProperties);
+                         }
+                     return L.circleMarker(latlng,
+                         properties
+                     );
+                 },
+             onEachFeature: function (feature, layer) {
+                     if (feature.properties.fuel_source["Biomass"]) {
+                         properties.textColor = biomassProperties.fillColor;
+                         biomassLayer.addLayer(layer);
+                     }
+                     else if (feature.properties.fuel_source["Geothermal"]) {
+                         properties.textColor = geothermalProperties.fillColor;
+                         geothermalLayer.addLayer(layer);
+                     }
+                     else if (feature.properties.fuel_source["Solar"]) {
+                         properties.textColor = solarProperties.fillColor;
+                         solarLayer.addLayer(layer);
+                     }
+                 var popupContent = '<span style="color:'+ properties.textColor + '; font-weight: bold">' + feature.properties.plant_name + '</span>';
+                 layer.bindPopup(popupContent);                
+                }
+             });
+             L.layerGroup([biomassLayer, geothermalLayer, solarLayer]).addTo(map);
+             
+             var biomassKey = '<span style="color:' + biomassProperties.fillColor + '">Biomass</span>',
+                 geothermalKey = '<span style="color:' + geothermalProperties.fillColor + '">Geothermal</span>',
+                 solarKey = '<span style="color:' + solarProperties.fillColor + '">Solar</span>';
+             
+             var layersToReturn = {};
+             layersToReturn[biomassKey] = biomassLayer;
+             layersToReturn[geothermalKey] = geothermalLayer;
+             layersToReturn[solarKey] = solarLayer;
+             return layersToReturn;
+         };
+          
+         var map = L.map('map', {
+             center: [36, -94],
+             zoom: 4,
+         });
+         
+         var tiles = L.tileLayer('http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png', {
+             attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap<\/a> &copy; <a href="http://cartodb.com/attributions">CartoDB<\/a>',
+             subdomains: 'abcd',
+             maxZoom: 19
+         });
+         
+         tiles.addTo(map);
+         // Changing the fillColor here should be all that is required to change color for a plant type in all areas where color is utilized.
+         var biomassProperties = {
+                 color: '#3fff73',
+                 fillColor: '#30cf5b'
+             },
+             geothermalProperties = {
+                  color: '#d6a334',
+                 fillColor: '#836523'
+             },
+             solarProperties = {
+                 color: '#e6ed32',                 
+                 fillColor: '#85891b'
+             },
+             commonProperties = {
+                 weight: 1,
+                 radius: null,
+                 fillOpacity: .8,
+                 textColor: null
+             };
+         
+         plants.features.sort(function(a, b) {
+             return b.properties.capacity_mw - a.properties.capacity_mw;
+         });
+         
+         var layers = getLayers(plants);
+         L.control.layers(null, layers, { collapsed: false }).addTo(map);
+      </script>
+   </body>
+</html>
